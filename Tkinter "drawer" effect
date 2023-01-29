@@ -1,0 +1,123 @@
+        #################################################################################
+        
+        # These are the libraries I used for the tkinter interface
+        
+        ###
+        
+        import tkinter as tk
+        from tkinter import ttk
+        from tkinter import *
+
+        #################################################################################
+        
+        # This is the button for the "minimize" button.
+        
+        ###
+       
+        # Style Button Reduire
+        
+        style_blue = ttk.Style()
+        style_blue.theme_use('alt')
+        ttk.Style().configure("Reduire.TButton",
+                              theme_use='alt',
+                              focusthickness=3,
+                              padding=[8, 8, 8, 8],
+                              width=5,
+                              height=22,
+                              borderwidth=0,
+                              borderradius=20,
+                              background='#22303D',
+                              foreground='white',
+                              focuscolor='none')
+        ttk.Style().map("Reduire.TButton", background=[('active', '#00688B')])
+        
+        # Bouton Reduire
+        
+        self.button_reduire = ttk.Button(self.canvas_title_frame, text="☐", style="Reduire.TButton")
+        self.button_reduire.pack(pady=2, padx=1, side=RIGHT)
+        self.button_reduire.bind("<ButtonRelease>", self.bouton_reduire)
+        
+        #################################################################################
+        
+        # This is the function of the "minimize" button.
+        
+        ###
+        
+            def bouton_reduire(self, *args):
+
+                if self.gpu_inf:
+                    self.bouton_gpu()
+                    self.master.after(1000, self.regress_gpu_bar)
+
+                if self.cpu_inf:
+                    self.bouton_cpu()
+                    self.master.after(1500, self.regress_cpu_bar)
+
+                if self.cpu_btn is False:
+                    self.button_reduire.configure(text="―")
+                    self.cpu_btn = True
+                    self.gpu_btn = True
+                    self.master.after(100, self.expand_btn_cpu)
+
+                elif self.cpu_btn:
+                    self.button_reduire.configure(text="☐")
+                    self.cpu_btn = False
+                    self.gpu_btn = False
+                    self.master.after(100, self.regress_mev_bar)
+
+        #################################################################################
+        
+        # This is the function that changes the "CPU" button
+          and returns based on the True/False.
+        
+        ###
+        
+            def bouton_cpu(self, *args):
+
+                if self.cpu_inf is False:
+                    self.button_cpu.configure(text="CPU ⏶")
+                    self.cpu_inf = True
+                    return self.expand_cpu_info()
+                elif self.cpu_inf:
+                    self.button_cpu.configure(text="CPU ⏷")
+                    self.cpu_inf = False
+                    return self.regress_cpu_info()
+
+        #################################################################################
+        
+        # If "False" there is a function to enlarge the CPU button canvas then a function
+          to enlarge the CPU information canvas.
+          
+        ### 
+        
+        # function to enlarge the CPU button canvas
+        
+            def expand_btn_cpu(self):
+
+                current_height_cpu_btn = int(self.canvas_cpu_bouton.winfo_height())
+
+                if current_height_cpu_btn <= 40:
+                    current_height_cpu_btn += 5
+                    self.canvas_cpu_bouton.place_configure(height=current_height_cpu_btn)
+                    self.master.after(10, self.expand_btn_cpu)
+
+                elif self.canvas_cpu_bouton.winfo_height() >= 40:
+                    self.master.after(10, self.expand_cpu_bar)
+
+        ###
+        
+        # function to enlarge the CPU information canvas
+        
+            def expand_cpu_bar(self):
+
+                current_width_cpu_bar = int(self.canvas_cpu.winfo_width())
+
+                if current_width_cpu_bar <= 261:
+                    current_width_cpu_bar += 4
+                    self.canvas_cpu.place_configure(width=current_width_cpu_bar)
+                    self.master.after(3, self.expand_cpu_bar)
+
+                elif self.canvas_cpu.winfo_width() >= 261:
+                    self.master.after(3, self.expand_btn_gpu)
+
+        
