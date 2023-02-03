@@ -1,4 +1,8 @@
 
+
+The program starts to slow down about 10 minutes after the start and this since I added the 2 functions.
+Without them it is very fluid. I do not understand why.
+
 #################################################################################
 
 # This is the import I used for time and date.
