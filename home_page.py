@@ -131,7 +131,7 @@ class HomePage:
 
     def update_temperature(self):
 
-        api_key = 'c51b77924149bad4a69badb05ecc681c'
+        api_key = 'YourOpenWeatherMapApiKey'
 
         city = "Geneva"
         country_code = "CH"
