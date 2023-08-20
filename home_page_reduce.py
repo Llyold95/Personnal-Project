@@ -201,7 +201,7 @@ class HomePageReduce:
     # Fonction pour rafraîchir l'affichage des widget de la météo
     def weather_update(self):
 
-        api_key = 'YourWeatherApiKey'
+        api_key = 'YouOpenWeatherMapApiKey'
         city = "Geneva"
         country_code = "CH"
 
