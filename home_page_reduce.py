@@ -39,8 +39,6 @@ class HomePageReduce:
 
         self.master = master
 
-        self.win_open = False
-
         # main windows settings
         self.master.title("Reduce Home")
         self.master.geometry("300x1000+5+5")
@@ -89,6 +87,7 @@ class HomePageReduce:
                                         x=260, y=0, width=40, height=40,
                                         button_name="exit")
 
+        self.win_open = False
         self.after_on = True
         self.logo_open = False
         self.powertoys_open = True
@@ -97,42 +96,54 @@ class HomePageReduce:
         self.callback_id_time = None
         self.callback_id_temperature = None
 
+        # set locale language and time
         locale.setlocale(locale.LC_TIME, "fr_FR")
 
+        # load time widget and update
         self.time()
         self.time_update()
 
+        # load date widget and update
         self.date()
         self.date_update()
 
+        # load weather widget and update
         self.weather()
         self.weather_update()
 
+        # load powertoys tools
         self.powertoys()
 
+        # path music folder
+        self.music_folder = "C:/DATA/PROJET_X/Rubikon_png/music_dl"
+
+        # set music status
         self.playing_music = None
         self.audio_choose = None
         self.audio_random = None
+
+        # load media player instance
         self.Instance = vlc.Instance()
         self.player = self.Instance.media_player_new()
-        self.player.audio_set_volume(50)
 
-        volume = 50
-
+        # set duration 0 for music timer
         self.duration = 0
 
-        self.music_folder = "C:/DATA/PROJET_X/Rubikon_png/music_dl"
-
+        # load music interface and button
         self.music()
-        self.btn_music(volume)
+        self.btn_volume()
+        self.volume_update()
+        self.btn_music()
 
+        # load setup cpu info and update
         self.setup_cpu()
         self.setup_cpu_update()
 
+        # load setup gpu info and update
         self.setup_gpu()
         self.setup_gpu_update()
 
-    # Fonction pour afficher l'heure
+    # function for time widget
     def time(self):
         # time
         self.time_label = Label(self.master, text="", bg='#06141b', fg='#ccd0cf', font=('Arial', 14, 'bold'))
@@ -140,7 +151,7 @@ class HomePageReduce:
         self.time_label.bind("<Button-1>", lambda event: self.logo_button.get_pos(event))
         self.time_label.bind("<B1-Motion>", lambda event: self.logo_button.move_window(event))
 
-    # Fonction pour rafraîchir l'affichage de l'heure
+    # function for update time widget
     def time_update(self):
 
         now = datetime.datetime.now()
@@ -150,7 +161,7 @@ class HomePageReduce:
 
         threading.Timer(2, self.time_update).start()
 
-    # Fonction pour afficher la date
+    # function for date widget
     def date(self):
         # date canvas
         self.date_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/date_bg.png"))
@@ -166,7 +177,7 @@ class HomePageReduce:
                                   font=('Arial', 14, 'bold'), justify='center')
         self.date_label_t.place(x=5, y=45, width=70, height=25)
 
-    # Fonction pour rafraîchir l'affichage de la date
+    # function for update date widget
     def date_update(self):
 
         now = datetime.datetime.now()
@@ -179,7 +190,7 @@ class HomePageReduce:
 
         threading.Timer(2, self.date_update).start()
 
-    # Fonction pour afficher l'îcone de la météo, la température et la description
+    # function for weather widget included "temperature icon" "temperature in celsius" "description of weather"
     def weather(self):
         # weather canvas
         self.weather_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/weather_bg.png"))
@@ -198,10 +209,10 @@ class HomePageReduce:
                                        font=('Arial', 10, 'bold'))
         self.weather_desc_label.place(x=160, y=33, anchor='n')
 
-    # Fonction pour rafraîchir l'affichage des widget de la météo
+    # function for update weather widget
     def weather_update(self):
 
-        api_key = 'YouOpenWeatherMapApiKey'
+        api_key = 'YourOpenWeatherMapKey'
         city = "Geneva"
         country_code = "CH"
 
@@ -244,6 +255,7 @@ class HomePageReduce:
 
         threading.Timer(60, self.weather_update).start()
 
+    # function for powertoys tools
     def powertoys(self):
         # powertoys canvas
         self.powertoys_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/tool_bg.png"))
@@ -272,46 +284,22 @@ class HomePageReduce:
                                                       state="inactive")
         self.screenruler_button_canvas.bind("<ButtonRelease>", self.screenruler_unclic)
 
-    # Fonction pour afficher la vidéo du MusicPlayer
-    def music(self):
+    # observatory for update volume
+    def volume_update(self, *args):
 
+        if self.playing_music is None:
+            volume = 50
+            self.volume_scale.set(volume)
+            self.volume_percent.config(text=f"{self.volume_scale.get()}%")
+            self.player.audio_set_volume(volume)
+        else:
+            volume = int(self.volume_scale.get())
+            self.volume_percent.config(text=f"{volume}%")
 
-        self.volume_scale = self.player.audio_set_volume(50)
+        self.player.audio_set_volume(volume)
 
-        # music canvas
-        self.music_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/video_player_bg.png"))
-        self.music_canvas = Canvas(self.home_page_canvas, bd=0, highlightthickness=0)
-        self.music_canvas.place(x=0, y=190, width=300, height=210)
-        self.music_canvas.create_image(0, 0, anchor=tk.NW,  image=self.music_png)
-
-        # video canvas
-        self.video_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/video_off.png"))
-        self.video_canvas = Canvas(self.music_canvas, bd=0, highlightthickness=0)
-        self.video_canvas.place(x=3, y=3, width=294, height=164)
-        self.video_canvas.create_image(0, 0, anchor=tk.NW,  image=self.video_png)
-        self.video_canvas.bind("<ButtonRelease>", self.pause_music)
-
-        self.video_label = LabelFrame(self.video_canvas, bd=0, width=70, height=70, bg="#06141b")
-        self.video_label.place_forget()
-        self.video_label.bind("<ButtonRelease>", self.pause_music)
-
-        self.video_title_label = Label(self.music_canvas, text="",
-                                    bg='#06141b', fg='#4a5c6a', font=('Arial', 10, 'bold'))
-        self.video_title_label.place(x=5, y=170, width=250, height=40)
-
-        self.video_time_label = Label(self.music_canvas, text="",
-                                    bg='#06141b', fg='#4a5c6a', font=('Arial', 10, 'bold'),
-                                    justify='center')
-        self.video_time_label.place(x=250, y=170, width=45, height=40)
-
-        # player btn canvas
-        self.player_btn_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/player_btn_bg.png"))
-        self.player_btn_canvas = Canvas(self.home_page_canvas, bd=0, highlightthickness=0)
-        self.player_btn_canvas.place(x=0, y=410, width=300, height=80)
-        self.player_btn_canvas.create_image(0, 0, anchor=tk.NW,  image=self.player_btn_png)
-        pass
-
-    def btn_music(self, volume):
+    # function for volume scale
+    def btn_volume(self):
 
         # btn volume
         self.volume_button_canvas = Canvas(self.player_btn_canvas, bd=0, highlightthickness=0)
@@ -322,26 +310,93 @@ class HomePageReduce:
 
         # scale volume
         self.volume_scale = Scale(self.player_btn_canvas, from_=0, to=100, orient=tk.HORIZONTAL,
-                                  bg="#4a5c6a", # couleur "canvas" et du bouton
-                                  fg="#ccd0cf", # couleur des numéro
-                                  relief="flat", # "raised" "sunken" "flat" "ridge" "solid" "groove"
+                                  bg="#4a5c6a",  # couleur "canvas" et du bouton
+                                  fg="#ccd0cf",  # couleur des numéro
+                                  relief="flat",  # "raised" "sunken" "flat" "ridge" "solid" "groove"
                                   showvalue="0",
                                   bd=0,
                                   width=12,
-                                  troughcolor="#0b2532", #couleur du rail
-                                  activebackground="#00557b", # couleur du bouton quand actif
-                                  highlightbackground="#06141b", # couleur des bordure du canvas
-                                  highlightcolor="#253745", # ?
-                                  sliderrelief="flat", sliderlength=20)
+                                  troughcolor="#0b2532",  # couleur du rail
+                                  activebackground="#00557b",  # couleur du bouton quand actif
+                                  highlightbackground="#06141b",  # couleur des bordure du canvas
+                                  highlightcolor="#253745",  # ?
+                                  sliderrelief="flat", sliderlength=20,
+                                  command=self.volume_update)
         self.volume_scale.place(x=50, y=12, width=200, height=16)
 
-        self.volume_scale.set(volume)
 
         # label volume percent
         self.volume_percent = Label(self.player_btn_canvas, text="50%",
                                     bg='#06141b', fg='#4a5c6a', font=('Arial', 10, 'bold'),
                                     justify='center')
         self.volume_percent.place(x=255, y=0, width=40, height=40)
+
+    # function for media player
+    def music(self):
+
+        # music main window
+        self.music_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/video_player_bg.png"))
+        self.music_canvas = Canvas(self.home_page_canvas, bd=0, highlightthickness=0)
+        self.music_canvas.place(x=0, y=190, width=300, height=210)
+        self.music_canvas.create_image(0, 0, anchor=tk.NW,  image=self.music_png)
+
+        # video canvas with offline background
+        self.video_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/video_off.png"))
+        self.video_canvas = Canvas(self.music_canvas, bd=0, highlightthickness=0)
+        self.video_canvas.place(x=3, y=3, width=294, height=164)
+        self.video_canvas.create_image(0, 0, anchor=tk.NW,  image=self.video_png)
+        self.video_canvas.bind("<ButtonRelease>", self.pause_music)
+
+        # video canvas for show video from media player
+        self.video_label = LabelFrame(self.video_canvas, bd=0, width=294, height=165, bg="#06141b")
+        self.video_label.bind("<ButtonRelease>", self.pause_music)
+        self.video_label.place_forget()
+
+        self.trans_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/transparent.png"))
+        self.trans_label = Label(self.video_label, bd=0, width=294, height=165, image=self.trans_png)
+
+        self.trans_label.bind("<ButtonRelease>", self.pause_music)
+        self.trans_label.place(x=0, y=0, width=294, height=165)
+        self.trans_label.place_forget()
+
+        # media title label
+        self.video_title_label = Label(self.music_canvas, text="",
+                                       bg='#06141b', fg='#4a5c6a', font=('Arial', 10, 'bold'))
+        self.video_title_label.place(x=5, y=170, width=250, height=40)
+
+        # media timer label
+        self.video_time_label = Label(self.music_canvas, text="",
+                                      bg='#06141b', fg='#4a5c6a', font=('Arial', 10, 'bold'),
+                                      justify='center')
+        self.video_time_label.place(x=250, y=170, width=45, height=40)
+
+
+        # media player button canvas
+        self.player_btn_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/player_btn_bg.png"))
+        self.player_btn_canvas = Canvas(self.home_page_canvas, bd=0, highlightthickness=0)
+        self.player_btn_canvas.place(x=0, y=410, width=300, height=80)
+        self.player_btn_canvas.create_image(0, 0, anchor=tk.NW,  image=self.player_btn_png)
+
+    def set_video(self):
+
+        self.video_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/video_off.png"))
+        self.video_canvas = Canvas(self.music_canvas, bd=0, highlightthickness=0)
+        self.video_canvas.place(x=3, y=3, width=294, height=164)
+        self.video_canvas.create_image(0, 0, anchor=tk.NW,  image=self.video_png)
+        self.video_canvas.bind("<ButtonRelease>", self.pause_music)
+
+        self.video_label = LabelFrame(self.video_canvas, bd=0, width=294, height=165, bg="#06141b")
+        self.video_label.bind("<ButtonRelease>", self.pause_music)
+        self.video_label.place_forget()
+
+        self.trans_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/transparent.png"))
+        self.trans_label = Label(self.video_label, bd=0, width=294, height=165, image=self.trans_png)
+        self.trans_label.bind("<ButtonRelease>", self.pause_music)
+        self.trans_label.place(x=0, y=0, width=294, height=165)
+        self.trans_label.place_forget()
+
+    # function for media player button
+    def btn_music(self):
 
         # btn folder
         self.folder_button_canvas = Canvas(self.player_btn_canvas, bd=0, highlightthickness=0)
@@ -407,14 +462,296 @@ class HomePageReduce:
         # url download
         self.url_entry = Entry(self.music_dl_canvas, bd=0, bg='#11212d', font=('Arial', 10), justify='center',
                                fg='#ccd0cf')
-        self.url_entry.place(x=47, y=4, width=248, height=32)
+        self.url_entry.place(x=47, y=4, width=203, height=32)
 
         self.url_entry.bind("<FocusIn>", self.on_url_entry_focus_in)
         # self.url_entry.bind("<FocusOut>", self.on_url_entry_focus_out)
         self.url_entry.bind("<Return>", self.perform_dl)
 
-    def setup_cpu(self):
+        self.dl_percent_label = Label(self.music_dl_canvas, text="",
+                                      bg='#06141b', fg='#4a5c6a', font=('Arial', 10, 'bold'),
+                                      justify='center')
+        self.dl_percent_label.place(x=255, y=0, width=45, height=40)
 
+    # function for choose and load media from folder
+    def load_music(self, *args, command=volume_update):
+        self.stop_music()
+        self.audio_choose = True
+
+        self.audio_path = filedialog.askopenfilename(initialdir=self.music_folder,
+                                                     filetypes=[("Audio files", "*.mp3 *.mp4 *.wav")])
+
+        if self.audio_path:
+            title_song = os.path.basename(self.audio_path).replace(".mp4", "")
+            self.video_title_label.config(text=title_song)
+            print(title_song)
+
+            self.play_music()
+
+    # function for load random media from folder
+    def play_random_music(self):
+        self.stop_music()
+        self.audio_random = True
+        self.audio_rdm = [f for f in os.listdir(self.music_folder) if f.endswith(".mp4") or f.endswith(".wav")]
+
+        if self.audio_rdm:
+            random_music = random.choice(self.audio_rdm)
+            title_song = os.path.basename(random_music).replace(".mp4", "")
+            self.audio_rdm = os.path.join(self.music_folder, random_music)
+
+            self.video_title_label.config(text=title_song)
+            print(title_song)
+
+            self.play_music()
+
+    # function for load random media after playing finishing
+    def on_music_end(self, *args):
+
+        self.video_title_label.config(text="")
+        self.video_time_label.config(text="")
+        #self.video_label.place_forget()
+
+        self.playing_music = None
+        self.play_random_music()
+
+    # function for play chosen or random media
+    def play_music(self, *args):
+
+        if self.audio_choose:
+
+            if self.playing_music is None:
+                print('play choose')
+                self.playing_music = True
+                self.btn_music()
+                media = self.Instance.media_new(self.audio_path)
+                self.duration = media.get_duration() // 1000
+                self.player.set_media(media)
+
+                self.video_label.place_forget()
+                self.video_label.place(x=0, y=0, width=295, height=166)
+                self.video_label.bind("<ButtonRelease>", self.pause_music)
+                self.player.set_hwnd(self.video_label.winfo_id())
+
+                self.player.play()
+                threading.Timer(1, self.update_time_label).start()
+
+            elif self.playing_music:
+                print('play new choose')
+                self.playing_music = True
+                self.btn_music()
+                media = self.Instance.media_new(self.audio_path)
+                self.duration = media.get_duration() // 1000
+                self.player.set_media(media)
+
+                self.video_label.place_forget()
+                self.video_label.place(x=0, y=0, width=295, height=166)
+                self.video_label.bind("<ButtonRelease>", self.pause_music)
+                self.player.set_hwnd(self.video_label.winfo_id())
+
+                self.player.play()
+                threading.Timer(1, self.update_time_label).start()
+
+        elif self.audio_random:
+            print('play random')
+            self.playing_music = True
+            self.btn_music()
+
+            media = self.Instance.media_new(self.audio_rdm)
+            self.duration = media.get_duration() // 1000
+            self.player.set_media(media)
+
+            self.video_label.place_forget()
+            self.video_label.place(x=0, y=0, width=295, height=166)
+            self.video_label.bind("<ButtonRelease>", self.pause_music)
+            self.player.set_hwnd(self.video_label.winfo_id())
+
+            self.player.play()
+
+            threading.Timer(1, self.update_time_label).start()
+
+    # function for update media timer
+    def update_time_label(self):
+
+        value = self.player.get_state()
+
+        if self.playing_music:
+
+            if value == vlc.State.Playing:
+                #self.trans_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/transparent.png"))
+                self.trans_label.place(x=0, y=0)
+                self.trans_label.bind("<ButtonRelease>", self.pause_music)
+                current_time = self.player.get_time() // 1000
+                formatted_time = time.strftime("%M:%S", time.gmtime(current_time))
+                self.video_time_label.config(text=formatted_time)
+                threading.Timer(0.5, self.update_time_label).start()
+
+            elif value == vlc.State.Ended:
+                self.play_random_music()
+            else:
+                pass
+
+    # function for pause and play media
+    def pause_music(self, args):
+
+        if self.playing_music is None:
+            self.play_random_music()
+
+        elif self.playing_music:
+            print("On Pause")
+            self.playing_music = False
+            self.btn_music()
+            self.player.pause()
+            threading.Timer(1, self.update_time_label).start()
+
+        else:
+            print("On Play")
+            self.playing_music = True
+            self.btn_music()
+            self.player.play()
+            threading.Timer(1, self.update_time_label).start()
+
+    # function for stop and reset media
+    def stop_music(self, *args):
+        print('stop')
+        self.playing_music = None
+        self.audio_choose = None
+        self.audio_random = None
+        self.video_title_label.config(text="")
+        self.video_time_label.config(text="")
+
+        self.set_video()
+        self.player.stop()
+        self.btn_music()
+
+    def download_update(self, stream, chunk, bytes_remaining):
+
+        total_size = stream.filesize
+        bytes_downloaded = total_size - bytes_remaining
+        percentage_of_completion = bytes_downloaded / total_size * 100
+
+        self.dl_percent_label.config(text=f"{percentage_of_completion:.0f}%")
+        print(percentage_of_completion)
+        self.master.after(10, self.update_interface)
+        self.master.update_idletasks()
+
+    def update_interface(self):
+
+        self.master.update_idletasks()
+
+    def perform_dl(self, event=None):
+
+        url = self.url_entry.get()
+        youtube = YouTube(url)
+        to_dl = url
+        self.url_entry.delete(0, END)
+        self.url_entry.insert(0, "Initialisation...")
+        clean_title = re.sub(r'[<>:"/\\|?*]', '', youtube.title)
+        print(clean_title)
+
+        threading.Timer(1, lambda: self.perform_dl_audio(to_dl)).start()
+
+    def perform_dl_audio(self, to_dl):
+
+        try:
+            self.url_entry.delete(0, END)
+            self.url_entry.insert(0, "Début du téléchargement audio...")
+
+            destination_folder = "C:\DATA\PROJET_X\Rubikon_png\music_dl"
+
+            youtube = YouTube(to_dl, on_progress_callback=self.download_update)
+
+            audio_stream = youtube.streams.filter(file_extension='mp4', progressive=False, only_audio=True).first()
+            clean_title = re.sub(r'[<>:"/\\|?*]', '', youtube.title)
+
+            audio_filename = f"{clean_title}_audio.mp4"
+
+            audio_stream.download(output_path=destination_folder, filename=audio_filename)
+
+            self.url_entry.delete(0, END)
+            self.url_entry.insert(0, "Téléchargement audio terminé !")
+
+        except Exception as e:
+            print("An error occurred:", e)
+
+        threading.Timer(1, lambda: self.perform_dl_video(to_dl)).start()
+
+    def perform_dl_video(self, to_dl):
+
+        try:
+            self.url_entry.delete(0, END)
+            self.url_entry.insert(0, "Début du téléchargement vidéo...")
+
+            destination_folder = "C:\DATA\PROJET_X\Rubikon_png\music_dl"
+
+            youtube = YouTube(to_dl, on_progress_callback=self.download_update)
+
+            video_stream = youtube.streams.filter(file_extension='mp4', progressive=False, only_video=True).first()
+            clean_title = re.sub(r'[<>:"/\\|?*]', '', youtube.title)
+
+            video_filename = f"{clean_title}_video.mp4"
+
+            video_stream.download(output_path=destination_folder, filename=video_filename)
+
+            self.url_entry.delete(0, END)
+            self.url_entry.insert(0, "Téléchargement vidéo terminé !")
+
+        except Exception as e:
+            print("An error occurred:", e)
+
+        threading.Timer(1, lambda: self.perform_fusion(clean_title)).start()
+
+    def perform_fusion(self, clean_title):
+
+        try:
+            self.url_entry.delete(0, END)
+            self.url_entry.insert(0, "Début de la Fusion...")
+
+            destination_folder = "C:\DATA\PROJET_X\Rubikon_png\music_dl"
+
+            video_filename = f"{clean_title}_video.mp4"
+            video_path = os.path.join(destination_folder, video_filename)
+
+            audio_filename = f"{clean_title}_audio.mp4"
+            audio_path = os.path.join(destination_folder, audio_filename)
+
+            merged_filename = f"{clean_title}.mp4"
+            merged_path = os.path.join(destination_folder, merged_filename)
+
+            cmd = [
+                "C:/Program Files/ffmpeg-6.0-essentials_build/ffmpeg-6.0-essentials_build/bin/ffmpeg.exe",
+                "-i", video_path,
+                "-i", audio_path,
+                "-c:v", "copy",
+                "-c:a", "aac",
+                merged_path
+            ]
+            directory_path = "C:/DATA/PROJET_X/Rubikon_png/music_dl/info_music_dl/"
+
+            output_file = open(f"{directory_path}{clean_title}_ffmpeg.txt", "w")
+            subprocess.run(cmd, stdout=output_file, stderr=output_file)
+            output_file.close()
+
+            if os.path.exists(video_path):
+                os.remove(video_path)
+            if os.path.exists(audio_path):
+                os.remove(audio_path)
+
+            self.url_entry.delete(0, END)
+            self.url_entry.insert(0, "Fusion terminée !")
+
+            threading.Timer(3, lambda: self.music_unclic(self)).start()
+        except Exception as e:
+            print("An error occurred:", e)
+
+    def on_url_entry_focus_in(self, event):
+        if not self.url_entry.get() == "":
+            self.url_entry.delete(0, END)
+
+    def on_url_entry_focus_out(self, event):
+        if not self.url_entry.get():
+            self.url_entry.insert(0, "")
+
+    def setup_cpu(self):
 
         # setup canvas
         self.cpu_setup_png = ImageTk.PhotoImage(Image.open("Rubikon_png/reduce_mode/setup_bg.png"))
@@ -738,292 +1075,6 @@ class HomePageReduce:
 
             threading.Timer(0.5, self.setup_gpu_update).start()
 
-    def load_music(self, args):
-        self.stop_music(self)
-        self.audio_choose = True
-        self.audio_path = filedialog.askopenfilename(initialdir=self.music_folder,
-                                                     filetypes=[("Audio files", "*.mp3 *.mp4 *.wav")])
-
-        if self.audio_path:
-            title_song = os.path.basename(self.audio_path).replace(".mp4", "")
-            self.video_title_label.config(text=title_song)
-            print(title_song)
-
-            self.play_music(args)
-
-    def play_random_music(self, args):
-        self.stop_music(self)
-        self.audio_random = True
-        self.audio_rdm = [f for f in os.listdir(self.music_folder) if f.endswith(".mp4") or f.endswith(".wav")]
-
-        if self.audio_rdm:
-            random_music = random.choice(self.audio_rdm)
-            title_song = os.path.basename(random_music).replace(".mp4", "")
-            self.audio_rdm = os.path.join(self.music_folder, random_music)
-
-            self.video_title_label.config(text=title_song)
-            print(title_song)
-
-            self.play_music(args)
-
-    def on_music_end(self, args):
-
-        self.video_title_label.config(text="")
-        self.video_time_label.config(text="")
-        self.video_label.place_forget()
-
-        self.playing_music = None
-        self.play_random_music(args)
-
-    def play_music(self, args):
-
-        if self.audio_choose:
-
-            if self.playing_music is None:
-                print('play choose')
-                self.playing_music = True
-                volume = self.volume_scale.get()
-                self.btn_music(volume=volume)
-                media = self.Instance.media_new(self.audio_path)
-                self.duration = media.get_duration() // 1000
-                self.player.set_media(media)
-
-                self.video_label.place_forget()
-                self.video_label.place(x=0, y=0, width=295, height=166)
-                self.player.set_hwnd(self.video_label.winfo_id())
-
-                self.player.play()
-                threading.Timer(1, self.update_time_label).start()
-
-            elif self.playing_music:
-                print('play new choose')
-                self.playing_music = True
-                volume = self.volume_scale.get()
-                self.btn_music(volume=volume)
-                media = self.Instance.media_new(self.audio_path)
-                self.duration = media.get_duration() // 1000
-                self.player.set_media(media)
-
-                self.video_label.place_forget()
-                self.video_label.place(x=0, y=0, width=295, height=166)
-                self.player.set_hwnd(self.video_label.winfo_id())
-
-                self.player.play()
-                threading.Timer(1, self.update_time_label).start()
-
-        elif self.audio_random:
-            print('play random')
-            self.playing_music = True
-            volume = self.volume_scale.get()
-            self.btn_music(volume=volume)
-
-            media = self.Instance.media_new(self.audio_rdm)
-            self.duration = media.get_duration() // 1000
-            self.player.set_media(media)
-
-            self.video_label.place_forget()
-            self.video_label.place(x=0, y=0, width=295, height=166)
-            self.video_label.bind("<ButtonRelease>", self.pause_music)
-            self.player.set_hwnd(self.video_label.winfo_id())
-
-            self.player.play()
-
-            threading.Timer(1, self.update_time_label).start()
-            volumethread = threading.Thread(target=self.refreshvolume, daemon=True)
-            volumethread.start()
-
-    def update_time_label(self):
-
-        value = self.player.get_state()
-
-        if self.playing_music:
-
-            if value == vlc.State.Playing:
-
-                current_time = self.player.get_time() // 1000
-                formatted_time = time.strftime("%M:%S", time.gmtime(current_time))
-                self.video_time_label.config(text=formatted_time)
-                threading.Timer(0.5, self.update_time_label).start()
-
-            elif value == vlc.State.Ended:
-                self.play_random_music(self)
-            else:
-                pass
-
-    def refreshvolume(self):
-
-        if self.playing_music:
-
-            while True:
-                self.set_volume(self.volume_scale.get())
-                time.sleep(0.1)
-
-    def set_volume(self, volume_scale):
-
-        if self.playing_music:
-
-            self.player.audio_set_volume(volume_scale)
-            self.volume_percent.config(text=f"{volume_scale}%")
-
-    def pause_music(self, args):
-
-        if self.playing_music is None:
-            self.play_random_music(args)
-
-        elif self.playing_music:
-            print("On Pause")
-            self.playing_music = False
-            self.btn_music(volume=50)
-            self.player.pause()
-            threading.Timer(1, self.update_time_label).start()
-            #threading.Timer(1, self.set_volume).start()
-        else:
-            print("On Play")
-            self.playing_music = True
-            self.btn_music(volume=50)
-            self.player.play()
-            threading.Timer(1, self.update_time_label).start()
-            #threading.Timer(1, self.set_volume).start()
-
-    def stop_music(self, args):
-
-        self.playing_music = None
-        self.audio_choose = None
-        self.audio_random = None
-        self.video_title_label.config(text="")
-        self.video_time_label.config(text="")
-        self.video_label.place_forget()
-        self.player.stop()
-        self.btn_music(volume=50)
-
-    def on_progress(self, stream, chunk, bytes_remaining):
-        total_size = stream.filesize
-        bytes_downloaded = total_size - bytes_remaining
-        percentage_of_completion = bytes_downloaded / total_size * 100
-
-        #self.url_entry.delete(0, END)
-        #self.url_entry.insert(0, f" {percentage_of_completion:.0f}%")
-
-        self.master.after(1, self.update_interface)
-        self.master.update_idletasks()
-
-    def update_interface(self):
-        self.master.update_idletasks()
-
-    def perform_dl(self, event=None):
-
-        url = self.url_entry.get()
-        youtube = YouTube(url)
-        to_dl = url
-        self.url_entry.delete(0, END)
-        self.url_entry.insert(0, "Initialisation...")
-        clean_title = re.sub(r'[<>:"/\\|?*]', '', youtube.title)
-        print(clean_title)
-
-        threading.Timer(2, lambda: self.perform_dl_audio(to_dl)).start()
-
-    def perform_dl_audio(self, to_dl):
-
-        try:
-            self.url_entry.delete(0, END)
-            self.url_entry.insert(0, "Début du téléchargement audio...")
-
-            destination_folder = "C:\DATA\PROJET_X\Rubikon_png\music_dl"
-
-            youtube = YouTube(to_dl)
-            #youtube.register_on_progress_callback(self.on_progress)
-
-            clean_title = re.sub(r'[<>:"/\\|?*]', '', youtube.title)
-
-            audio_stream = youtube.streams.filter(file_extension='mp4', progressive=False, only_audio=True).first()
-            audio_filename = f"{clean_title}_audio.mp4"
-
-            audio_stream.download(output_path=destination_folder, filename=audio_filename)
-
-            self.url_entry.delete(0, END)
-            self.url_entry.insert(0, "Téléchargement audio terminé !")
-
-        except Exception as e:
-            print("An error occurred:", e)
-
-        threading.Timer(2, lambda: self.perform_dl_video(to_dl)).start()
-
-    def perform_dl_video(self, to_dl):
-
-        try:
-            self.url_entry.delete(0, END)
-            self.url_entry.insert(0, "Début du téléchargement vidéo...")
-
-            destination_folder = "C:\DATA\PROJET_X\Rubikon_png\music_dl"
-
-            youtube = YouTube(to_dl)
-            #youtube.register_on_progress_callback(self.on_progress)
-
-            clean_title = re.sub(r'[<>:"/\\|?*]', '', youtube.title)
-
-            video_stream = youtube.streams.filter(file_extension='mp4', progressive=False, only_video=True).first()
-            video_filename = f"{clean_title}_video.mp4"
-
-            video_stream.download(output_path=destination_folder, filename=video_filename)
-
-            self.url_entry.delete(0, END)
-            self.url_entry.insert(0, "Téléchargement vidéo terminé !")
-
-        except Exception as e:
-            print("An error occurred:", e)
-
-        threading.Timer(2, lambda: self.perform_fusion(clean_title)).start()
-
-    def perform_fusion(self, clean_title):
-
-        try:
-            self.url_entry.delete(0, END)
-            self.url_entry.insert(0, "Début de la Fusion...")
-
-            destination_folder = "C:\DATA\PROJET_X\Rubikon_png\music_dl"
-
-            video_filename = f"{clean_title}_video.mp4"
-            video_path = os.path.join(destination_folder, video_filename)
-
-            audio_filename = f"{clean_title}_audio.mp4"
-            audio_path = os.path.join(destination_folder, audio_filename)
-
-            merged_filename = f"{clean_title}.mp4"
-            merged_path = os.path.join(destination_folder, merged_filename)
-
-            cmd = [
-                "C:/Program Files/ffmpeg-6.0-essentials_build/ffmpeg-6.0-essentials_build/bin/ffmpeg.exe",
-                "-i", video_path,
-                "-i", audio_path,
-                "-c:v", "copy",
-                "-c:a", "aac",
-                merged_path
-            ]
-            directory_path = "C:/DATA/PROJET_X/Rubikon_png/music_dl/info_music_dl/"
-
-            output_file = open(f"{directory_path}{clean_title}_ffmpeg.txt", "w")
-            subprocess.run(cmd, stdout=output_file, stderr=output_file)
-            output_file.close()
-
-            if os.path.exists(video_path):
-                os.remove(video_path)
-            if os.path.exists(audio_path):
-                os.remove(audio_path)
-
-            self.url_entry.delete(0, END)
-            self.url_entry.insert(0, "Fusion terminée !")
-
-        except Exception as e:
-            print("An error occurred:", e)
-
-    def on_url_entry_focus_in(self, event):
-        if not self.url_entry.get() == "":
-            self.url_entry.delete(0, END)
-
-    def on_url_entry_focus_out(self, event):
-        if not self.url_entry.get():
-            self.url_entry.insert(0, "")
-
     def stop_updates(self):
         if self.callback_id_time is not None:
             self.master.after_cancel(self.callback_id_time)
@@ -1093,7 +1144,7 @@ class HomePageReduce:
             self.master.after(2, self.regress_power)
 
     def music_unclic(self, event):
-        self.music_button.change_state("unclic")
+        self.music_button.change_state("inactive")
 
         if self.music_open:
 
@@ -1108,6 +1159,8 @@ class HomePageReduce:
             self.master.after(100, self.expand_music)
 
     def expand_music(self):
+
+        self.dl_percent_label.config(text="")
         current_width_music = int(self.music_dl_canvas.winfo_width())
 
         if current_width_music <= 320:
