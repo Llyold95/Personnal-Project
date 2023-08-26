@@ -630,7 +630,7 @@ class MainApplication(tk.Tk):
     # Function to update the icon weather, temperature in Celsius and description of weather
     def weather_update(self):
 
-        api_key = 'c51b77924149bad4a69badb05ecc681c'
+        api_key = 'YourOpenWeatherMapKey'
         city = "Geneva"
         country_code = "CH"
 
