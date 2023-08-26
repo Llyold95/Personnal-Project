@@ -2,8 +2,8 @@
 
 Launch the program with the "main.py"
 
-you will need an OpenWeatherMap API key to display the weather.
+You will need an OpenWeatherMap API key to display the weather.
 
-you will need to replace my paths with yours
+You will need to replace my paths with yours
 
-you may need to disable certain functions such as displaying CPU/GPU information
+The "Rubikon_VX2" folder contains all the graphic elements that I created/used for the application and are with the extension "png"
