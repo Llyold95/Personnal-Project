@@ -46,6 +46,9 @@ class LabelButton:
             "next": self.master.load_random_music,
             "stop": self.master.stop_music,
             "dl": self.master.music_unclic,
+            "volume": self.master.volume_mute,
+            "mute": self.master.volume_mute,
+            "send": self.master.envoyer_question
         }
 
         if self.button_name in button_functions:
