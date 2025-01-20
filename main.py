@@ -6,7 +6,6 @@ from pynput.mouse import Listener, Button
 from tkinter import filedialog
 from tkinter import ttk
 import pystray
-import threading
 import datetime
 import locale
 import requests
@@ -15,13 +14,13 @@ import pyautogui
 import vlc
 import time
 import random
-import os
 from pytube import YouTube
 import re
 import subprocess
 import psutil
 import py3nvml
 from py3nvml.py3nvml import *
+import ollama
 
 
 wmi = wmi.WMI()
@@ -39,9 +38,10 @@ class MainApplication(tk.Tk):
         # main windows settings
         self.master = master
         pos_x = -10
-        self.geometry(f"320x1000+{pos_x}+10")
+        
+        self.geometry(f"320x1035+{pos_x}+10")
         self.attributes("-topmost", True)
-        self.attributes("-alpha", 0.7)
+        self.attributes("-alpha", 0.8)
         self.overrideredirect(True)
         self.attributes("-transparentcolor", '#ffaec8')
         self.config(bg="#ffaec8")
@@ -57,98 +57,91 @@ class MainApplication(tk.Tk):
         self.start_y = None
         ################################################################################################################
         # Frame for motion bar, time widget and logo, mini and exit buttons
-        self.move_bar_frame = Frame(self.master, bd=0, width=320, height=40, bg="#06141b")
-        self.move_bar_frame.place(x=0, y=0, width=320, height=40)
-        # Label for Motion bar
-        self.move_bar_png = ImageTk.PhotoImage(Image.open("Rubikon_VX2/move.png"))
-        self.move_bar_label = Label(self.move_bar_frame, width=320, height=40, image=self.move_bar_png)
-        self.move_bar_label.place(x=0, y=0, width=320, height=40)
-        self.move_bar_label.bind("<Button-1>", lambda event: self.get_pos(event))
-        self.move_bar_label.bind("<B1-Motion>", lambda event: self.move_window(event))
+        self.MoveBarFrame = Frame(self.master, bd=0, bg="#06141b", width=320, height=40)
+        self.MoveBarFrame.place(x=0, y=0)
+        # Label for Motion bar bg
+        self.MoveBarPng = ImageTk.PhotoImage(Image.open("Rubikon_VX2/move.png"))
+        self.MoveBarBg = Label(self.MoveBarFrame, bd=0, width=320, height=40, image=self.MoveBarPng)
+        self.MoveBarBg.place(x=0, y=0)
+        self.MoveBarBg.bind("<Button-1>", lambda event: self.get_pos(event))
+        self.MoveBarBg.bind("<B1-Motion>", lambda event: self.move_window(event))
         ################################################################################################################
         # Label for exit button
-        self.exit_button_label = Label(self.move_bar_frame, bd=0, highlightthickness=0)
-        self.exit_button = LabelButton(master=self, label=self.exit_button_label,
-                                       x=10, y=0, width=40, height=40,
-                                       button_name="exit")
+        self.ExitButtonLabel = Label(self.MoveBarFrame, bd=0, highlightthickness=0)
+        self.ExitButton = LabelButton(master=self, label=self.ExitButtonLabel, button_name="exit",
+                                      x=10, y=0, width=40, height=40)
         # Label for mini button
-        self.mini_button_label = Label(self.move_bar_frame, bd=0, highlightthickness=0)
-        self.mini_button = LabelButton(master=self, label=self.mini_button_label,
-                                       x=235, y=0, width=40, height=40,
-                                       button_name="mini")
+        self.MiniButtonLabel = Label(self.MoveBarFrame, bd=0, highlightthickness=0)
+        self.MiniButton = LabelButton(master=self, label=self.MiniButtonLabel, button_name="mini",
+                                      x=235, y=0, width=40, height=40)
         # Label for logo button
-        self.logo_button_label = Label(self.move_bar_frame, bd=0, highlightthickness=0)
-        self.logo_button = LabelButton(master=self, label=self.logo_button_label,
-                                       x=275, y=0, width=40, height=40,
-                                       button_name="logo")
+        self.LogoButtonLabel = Label(self.MoveBarFrame, bd=0, highlightthickness=0)
+        self.LogoButton = LabelButton(master=self, label=self.LogoButtonLabel, button_name="logo",
+                                      x=275, y=0, width=40, height=40)
         ################################################################################################################
         # Label for time widget
-        self.time_widget_label = Label(self.move_bar_frame, bg='black', fg='#4a5c6a', font=('Arial', 14, 'bold'),
-                                       text="00:00")
-        self.time_widget_label.place(x=130, y=6, anchor='nw')
-        self.time_widget_label.bind("<Button-1>", lambda event: self.get_pos(event))
-        self.time_widget_label.bind("<B1-Motion>", lambda event: self.move_window(event))
+        self.TimeWidgetLabel = Label(self.MoveBarFrame, bg='black', fg='#4a5c6a', font=('Jura', 14, 'bold'),
+                                     text="00:00")
+        self.TimeWidgetLabel.place(x=130, y=4, anchor='nw')
+        self.TimeWidgetLabel.bind("<Button-1>", lambda event: self.get_pos(event))
+        self.TimeWidgetLabel.bind("<B1-Motion>", lambda event: self.move_window(event))
         ################################################################################################################
         # set locale language and time
         locale.setlocale(locale.LC_TIME, "fr_FR")
         # Frame for date widget
-        self.date_widget_frame = Frame(self.master, bd=0, width=80, height=80, bg="#06141b")
-        self.date_widget_frame.place(x=10, y=50, width=80, height=80)
-        # Label for date widget
-        self.date_widget_png = ImageTk.PhotoImage(Image.open("Rubikon_VX2/date_bg.png"))
-        self.date_widget_label = Label(self.date_widget_frame, width=80, height=80, image=self.date_widget_png)
-        self.date_widget_label.place(x=0, y=0, width=80, height=80)
+        self.DateWidgetFrame = Frame(self.master, bd=0, bg="#06141b", width=80, height=80)
+        self.DateWidgetFrame.place(x=10, y=50)
+        # Label for date widget bg
+        self.DateWidgetPng = ImageTk.PhotoImage(Image.open("Rubikon_VX2/date_bg.png"))
+        self.DateWidgetBg = Label(self.DateWidgetFrame, bd=0, width=80, height=80, image=self.DateWidgetPng)
+        self.DateWidgetBg.place(x=0, y=0)
         # Label for date day widget
-        self.date_day_label = Label(self.date_widget_frame, bg='#06141b', fg='#afafaf', font=('Arial', 24, 'bold'),
-                                    text="00",
-                                    justify='center')
-        self.date_day_label.place(x=5, y=0, width=70, height=50)
+        self.DateDayLabel = Label(self.DateWidgetFrame, bg='#06141b', fg='#afafaf', font=('Jura', 24, 'bold'),
+                                  text="00", justify='center')
+        self.DateDayLabel.place(x=5, y=0, width=70, height=50)
         # Label for date mount widget
-        self.date_mon_label = Label(self.date_widget_frame, bg='#06141b', fg='#afafaf', font=('Arial', 14, 'bold'),
-                                    text="",
-                                    justify='center')
-        self.date_mon_label.place(x=5, y=45, width=70, height=25)
+        self.DateMonLabel = Label(self.DateWidgetFrame, bg='#06141b', fg='#afafaf', font=('Jura', 14, 'bold'),
+                                  text="", justify='center')
+        self.DateMonLabel.place(x=5, y=45, width=70, height=25)
         # Launches the update function of the hour, the day and the month every two seconds
         self.time_date_update()
         ################################################################################################################
         # Frame for weather widget
-        self.weat_widget_frame = Frame(self.master, bd=0, width=80, height=80, bg="#06141b")
-        self.weat_widget_frame.place(x=100, y=50, width=210, height=80)
+        self.WeatherWidgetFrame = Frame(self.master, bd=0, bg="#06141b")
+        self.WeatherWidgetFrame.place(x=100, y=50, width=210, height=80)
         # Label for weather widget
-        self.weat_widget_png = ImageTk.PhotoImage(Image.open("Rubikon_VX2/weather_bg.png"))
-        self.weat_widget_label = Label(self.weat_widget_frame, width=210, height=80, image=self.weat_widget_png)
-        self.weat_widget_label.place(x=0, y=0, width=210, height=80)
+        self.WeatherWidgetPng = ImageTk.PhotoImage(Image.open("Rubikon_VX2/weather_bg.png"))
+        self.WeatherWidgetBg = Label(self.WeatherWidgetFrame, image=self.WeatherWidgetPng)
+        self.WeatherWidgetBg.place(x=0, y=0, width=210, height=80)
         # Label for weather icon widget
-        self.weat_icon_label = Label(self.weat_widget_frame, bg='#06141b', bd=0, highlightthickness=0)
-        self.weat_icon_label.place(x=23, y=5, width=70, height=70)
+        self.WeatherIconLabel = Label(self.WeatherWidgetFrame, bg='#06141b', bd=0, highlightthickness=0)
+        self.WeatherIconLabel.place(x=23, y=5, width=70, height=70)
         # Label for weather temperature in Celsius widget
-        self.weat_temp_label = Label(self.weat_widget_frame, bg='#06141b', fg='#afafaf', font=('Arial', 14, 'bold'),
-                                     text="")
-        self.weat_temp_label.place(x=167, y=5, anchor='n')
+        self.WeatherTempLabel = Label(self.WeatherWidgetFrame, bg='#06141b', fg='#afafaf',
+                                      font=('Jura', 14, 'bold'), text="")
+        self.WeatherTempLabel.place(x=167, y=5, anchor='n')
         # Label for weather description widget
-        self.weat_desc_label = Label(self.weat_widget_frame, bg='#06141b', fg='#afafaf', font=('Arial', 9, 'bold'),
-                                     text="")
-        self.weat_desc_label.place(x=167, y=33, anchor='n')
+        self.WeatherDescLabel = Label(self.WeatherWidgetFrame, bg='#06141b', fg='#afafaf',
+                                      font=('Jura', 9, 'bold'), text="")
+        self.WeatherDescLabel.place(x=167, y=33, anchor='n')
         # Launches the update of the icon, temperature in Celsius and description of weather every minute
         self.weather_update()
         ################################################################################################################
         # Frame for powertoys tools widget
-        self.powe_widget_frame = Frame(self.master, bd=0, width=300, height=40, bg="#06141b")
-        self.powe_widget_frame.place(x=10, y=140, width=300, height=40)
-        # Label for weather widget
-        self.powe_widget_png = ImageTk.PhotoImage(Image.open("Rubikon_VX2/tool_bg.png"))
-        self.powe_widget_label = Label(self.powe_widget_frame, width=300, height=40, image=self.powe_widget_png)
-        self.powe_widget_label.place(x=0, y=0, width=300, height=40)
+        self.ToolWidgetFrame = Frame(self.master, bd=0, bg="#06141b")
+        self.ToolWidgetFrame.place(x=10, y=140, width=300, height=40)
+        # Label for Tool widget
+        self.ToolWidgetPng = ImageTk.PhotoImage(Image.open("Rubikon_VX2/tool_bg.png"))
+        self.ToolWidgetBg = Label(self.ToolWidgetFrame, image=self.ToolWidgetPng)
+        self.ToolWidgetBg.place(x=0, y=0, width=300, height=40)
         # Label for colorpicker button
-        self.colo_button_label = Label(self.powe_widget_frame, bd=0, highlightthickness=0)
-        self.colo_button = LabelButton(master=self, label=self.colo_button_label,
-                                       x=260, y=0, width=40, height=40,
-                                       button_name="colorpicker")
+        self.ToolColoLabel = Label(self.ToolWidgetFrame, bd=0, highlightthickness=0)
+        self.ToolColo = LabelButton(master=self, label=self.ToolColoLabel, button_name="colorpicker",
+                                    x=260, y=0, width=40, height=40)
         # Label for screenruler button
-        self.scre_button_label = Label(self.powe_widget_frame, bd=0, highlightthickness=0)
-        self.scre_button = LabelButton(master=self, label=self.scre_button_label,
-                                       x=220, y=0, width=40, height=40,
-                                       button_name="screenruler")
+        self.ToolScreLabel = Label(self.ToolWidgetFrame, bd=0, highlightthickness=0)
+        self.ToolScre = LabelButton(master=self, label=self.ToolScreLabel, button_name="screenruler",
+                                    x=220, y=0, width=40, height=40)
         ################################################################################################################
         # path music folder
         self.music_folder = "C:/DATA/PROJET_X/Rubikon_png/music_dl"
@@ -156,6 +149,7 @@ class MainApplication(tk.Tk):
         self.playing_music = None
         self.audio_choose = None
         self.audio_random = None
+        self.audio_mute = False
         # load media player instance
         self.Instance = vlc.Instance()
         self.player = self.Instance.media_player_new()
@@ -163,41 +157,39 @@ class MainApplication(tk.Tk):
         self.duration = 0
         # set title_song "" for music title
         self.title_song = ""
-
-        # Frame for powertoys tools widget
-        self.medi_widget_frame = Frame(self.master, bd=0, width=300, height=215, bg="#06141b")
-        self.medi_widget_frame.place(x=10, y=185, width=300, height=215)
+        # Frame for Media player widget
+        self.MediWidgetFrame = Frame(self.master, bd=0, bg="#06141b")
+        self.MediWidgetFrame.place(x=10, y=185, width=300, height=215)
         # Label for video widget
-        self.vide_widget_png = ImageTk.PhotoImage(Image.open("Rubikon_VX2/video_player_bg.png"))
-        self.vide_widget_label = Label(self.medi_widget_frame, width=300, height=215, image=self.vide_widget_png)
-        self.vide_widget_label.bind("<ButtonRelease>", self.pause_music)
-        self.vide_widget_label.place(x=0, y=0, width=300, height=215)
+        self.VideWidgetPng = ImageTk.PhotoImage(Image.open("Rubikon_VX2/video_player_bg.png"))
+        self.VideWidgetBg = Label(self.MediWidgetFrame, image=self.VideWidgetPng)
+        self.VideWidgetBg.bind("<ButtonRelease>", self.pause_music)
+        self.VideWidgetBg.place(x=0, y=0, width=300, height=215)
         # video canvas for show video from media player
-        self.vide_frame = Frame(self.vide_widget_label, bd=0, width=295, height=166, bg="#06141b")
-        self.vide_frame.pack_forget()
+        self.VideFrame = Frame(self.VideWidgetBg, bd=0, width=295, height=166, bg="#06141b")
+        self.VideFrame.pack_forget()
         # media title label
-        self.vide_title_label = Label(self.medi_widget_frame, text="Video Title",
-                                      bg='#06141b', fg='#4a5c6a', font=('Arial', 10, 'bold'),
-                                      justify='center')
-        self.vide_title_label.place(x=5, y=175, width=245, height=40)
+        self.VideTitleLabel = Label(self.MediWidgetFrame, bg='#06141b', fg='#4a5c6a', font=('Jura', 10, 'bold'),
+                                    text="", justify='center')
+        self.VideTitleLabel.place(x=5, y=175, width=245, height=40)
         # media timer label
-        self.vide_time_label = Label(self.medi_widget_frame, text="00:00",
-                                     bg='#06141b', fg='#4a5c6a', font=('Arial', 10, 'bold'),
-                                     justify='center')
-        self.vide_time_label.place(x=250, y=175, width=45, height=40)
+        self.VideTimeLabel = Label(self.MediWidgetFrame, bg='#06141b', fg='#4a5c6a', font=('Arial', 10, 'bold'),
+                                   text="", justify='center')
+        self.VideTimeLabel.place(x=250, y=175, width=45, height=40)
         ################################################################################################################
-        self.widget_widget_frame = Frame(self.master, bd=0, width=300, height=310, bg="#ffaec8")
-        self.widget_widget_frame.place(x=10, y=410, width=300, height=310)
+        # Frame container
+        self.WidgetWidgetFrame = Frame(self.master, bd=0, width=300, height=310, bg="#ffaec8")
+        self.WidgetWidgetFrame.place(x=10, y=410, width=300, height=310)
         ################################################################################################################
         # Frame for video button widget
-        self.play_widget_frame = Frame(self.widget_widget_frame, bd=0, width=300, height=80, bg="#06141b")
-        self.play_widget_frame.place(x=0, y=0, width=300, height=80)
+        self.PlayWidgetFrame = Frame(self.WidgetWidgetFrame, bd=0, width=300, height=80, bg="#06141b")
+        self.PlayWidgetFrame.place(x=0, y=0, width=300, height=80)
         # Label for video widget
-        self.play_widget_png = ImageTk.PhotoImage(Image.open("Rubikon_VX2/player_btn_bg.png"))
-        self.play_widget_label = Label(self.play_widget_frame, width=300, height=80, image=self.play_widget_png)
-        self.play_widget_label.place(x=0, y=0, width=300, height=80)
+        self.PlayWidgetPng = ImageTk.PhotoImage(Image.open("Rubikon_VX2/player_btn_bg.png"))
+        self.PlayWidgetBg = Label(self.PlayWidgetFrame, width=300, height=80, image=self.PlayWidgetPng)
+        self.PlayWidgetBg.place(x=0, y=0, width=300, height=80)
         # scale volume
-        self.volu_scale = Scale(self.play_widget_frame, from_=0, to=100, orient=tk.HORIZONTAL,
+        self.volu_scale = Scale(self.PlayWidgetFrame, from_=0, to=100, orient=tk.HORIZONTAL,
                                 bg="#4a5c6a",  # couleur "canvas" et du bouton
                                 fg="#ccd0cf",  # couleur des numéro
                                 relief="flat",  # "raised" "sunken" "flat" "ridge" "solid" "groove"
@@ -212,81 +204,66 @@ class MainApplication(tk.Tk):
                                 command=self.volume_update)
         self.volu_scale.place(x=6, y=12, width=200, height=16)
         # Label for exit button
-        self.volu_button_label = Label(self.play_widget_frame, bd=0, highlightthickness=0)
-        self.volu_button = LabelButton(master=self, label=self.volu_button_label,
-                                       x=215, y=0, width=40, height=40,
-                                       button_name="volume")
+        self.volu_button_label = Label(self.PlayWidgetFrame, bd=0, highlightthickness=0)
+        self.volu_button = LabelButton(master=self, label=self.volu_button_label, button_name="volume",
+                                       x=220, y=0, width=40, height=40)
         # label volume percent
-        self.volu_percent = Label(self.play_widget_frame, text="50%",
-                                  bg='#06141b', fg='#ccd0cf', font=('Arial', 10, 'bold'),
-                                  justify='center')
+        self.volu_percent = Label(self.PlayWidgetFrame, bg='#06141b', fg='#ccd0cf', font=('Arial', 10, 'bold'),
+                                  text="50%", justify='center', anchor='e')
         self.volu_percent.place(x=255, y=0, width=40, height=40)
         self.volume_update()
         # btn back
-        self.back_button_label = Label(self.play_widget_frame, bd=0, highlightthickness=0)
-        self.back_button = LabelButton(master=self, label=self.back_button_label,
-                                       x=45, y=40, width=40, height=40,
-                                       button_name="back")
+        self.back_button_label = Label(self.PlayWidgetFrame, bd=0, highlightthickness=0)
+        self.back_button = LabelButton(master=self, label=self.back_button_label, button_name="back",
+                                       x=45, y=40, width=40, height=40)
         # btn pause / play
-        self.paus_play_button_label = Label(self.play_widget_frame, bd=0, highlightthickness=0)
-        self.pause_button = LabelButton(master=self, label=self.paus_play_button_label,
-                                        x=85, y=40, width=40, height=40,
-                                        button_name="play")
+        self.paus_play_button_label = Label(self.PlayWidgetFrame, bd=0, highlightthickness=0)
+        self.pause_button = LabelButton(master=self, label=self.paus_play_button_label, button_name="play",
+                                        x=85, y=40, width=40, height=40)
         # btn next
-        self.next_button_label = Label(self.play_widget_frame, bd=0, highlightthickness=0)
-        self.next_button = LabelButton(master=self, label=self.next_button_label,
-                                       x=125, y=40, width=40, height=40,
-                                       button_name="next")
+        self.next_button_label = Label(self.PlayWidgetFrame, bd=0, highlightthickness=0)
+        self.next_button = LabelButton(master=self, label=self.next_button_label, button_name="next",
+                                       x=125, y=40, width=40, height=40)
         # btn stop
-        self.stop_button_label = Label(self.play_widget_frame, bd=0, highlightthickness=0)
-        self.stop_button = LabelButton(master=self, label=self.stop_button_label,
-                                       x=165, y=40, width=40, height=40,
-                                       button_name="stop")
+        self.stop_button_label = Label(self.PlayWidgetFrame, bd=0, highlightthickness=0)
+        self.stop_button = LabelButton(master=self, label=self.stop_button_label, button_name="stop",
+                                       x=165, y=40, width=40, height=40)
         # btn folder
-        self.fold_button_label = Label(self.play_widget_frame, bd=0, highlightthickness=0)
-        self.fold_button = LabelButton(master=self, label=self.fold_button_label,
-                                       x=215, y=40, width=40, height=40,
-                                       button_name="folder")
+        self.fold_button_label = Label(self.PlayWidgetFrame, bd=0, highlightthickness=0)
+        self.fold_button = LabelButton(master=self, label=self.fold_button_label, button_name="folder",
+                                       x=220, y=40, width=40, height=40)
         ################################################################################################################
         self.music_open = False
         # Frame for download button, url entry and percent download label widget
-        self.down_widget_frame = Frame(self.widget_widget_frame, bd=0, width=40, height=40, bg="#06141b")
+        self.down_widget_frame = Frame(self.WidgetWidgetFrame, bd=0, width=40, height=40, bg="#06141b")
         self.down_widget_frame.place(x=0, y=40, width=40, height=40)
         # Label for download widget
         self.down_widget_png = ImageTk.PhotoImage(Image.open("Rubikon_VX2/music_dl.png"))
-        self.down_widget_label = Label(self.down_widget_frame, image=self.down_widget_png)
-        self.down_widget_label.place(x=0, y=0, width=40, height=40)
+        self.down_widget_bg = Label(self.down_widget_frame, image=self.down_widget_png)
+        self.down_widget_bg.place(x=0, y=0, width=40, height=40)
         # btn download
         self.down_button_label = Label(self.down_widget_frame, bd=0, highlightthickness=0)
-        self.down_button = LabelButton(master=self, label=self.down_button_label,
-                                       x=0, y=0, width=40, height=40,
-                                       button_name="dl")
+        self.down_button = LabelButton(master=self, label=self.down_button_label, button_name="dl",
+                                       x=0, y=0, width=40, height=40)
         # Entry for url download
-        self.url_entry = Entry(self.down_widget_frame, bd=0, bg='#11212d', font=('Arial', 8), justify='center',
+        self.url_entry = Entry(self.down_widget_frame, bd=0, bg='#11212d', font=('Jura', 8), justify='center',
                                fg='#ccd0cf')
         self.url_entry.place(x=52, y=4, width=196, height=30)
         self.url_entry.bind("<FocusIn>", self.on_url_entry_focus_in)
-        # self.url_entry.bind("<FocusOut>", self.on_url_entry_focus_out)
         self.url_entry.bind("<Return>", self.perform_dl)
         # Label for download percent widget
-        self.dl_percent_label = Label(self.down_widget_frame, text="test",
-                                      bg='#06141b', fg='#4a5c6a', font=('Arial', 10, 'bold'),
-                                      justify='center')
+        self.dl_percent_label = Label(self.down_widget_frame, bg='#06141b', fg='#4a5c6a', font=('Arial', 10, 'bold'),
+                                      text="test", justify='center')
         self.dl_percent_label.place(x=252, y=0, width=45, height=40)
         ################################################################################################################
         self.processors = wmi.Win32_Processor()
         # Frame for setup cpu, url entry and percent download label widget
-        self.cpu_widget_frame = Frame(self.widget_widget_frame, bd=0, width=300, height=40, bg="#06141b")
-        self.cpu_widget_frame.place(x=0, y=90, width=300, height=40)
+        self.CpuWidgetFrame = Frame(self.WidgetWidgetFrame, bd=0, width=300, height=40, bg="#06141b")
+        self.CpuWidgetFrame.place(x=0, y=90, width=300, height=40)
         # Label for download widget
         self.cpu_widget_png = ImageTk.PhotoImage(Image.open("Rubikon_VX2/tool_bg.png"))
-        self.cpu_widget_label = Label(self.cpu_widget_frame, image=self.cpu_widget_png)
-        self.cpu_widget_label.place(x=0, y=0, width=300, height=40)
-        # label cpu name
-        #self.cpu_name_label = Label(self.cpu_widget_frame, text="device name",
-                                    #bg='#06141b', fg='#4a5c6a', font=('Arial', 9, 'bold'),
-                                    #anchor=W)
-        #self.cpu_name_label.place(x=5, y=3, width=295, height=40)
+        self.cpu_widget_bg = Label(self.CpuWidgetFrame, image=self.cpu_widget_png)
+        self.cpu_widget_bg.place(x=0, y=0, width=300, height=40)
         # cpu load progressbar
         style_blue = ttk.Style()
         style_blue.theme_use('alt')
@@ -303,7 +280,7 @@ class MainApplication(tk.Tk):
                               troughrelief='flat')
         ttk.Style().map('Bluec.Horizontal.TProgressbar')
 
-        self.cpu_load_bar = ttk.Progressbar(self.cpu_widget_frame,
+        self.cpu_load_bar = ttk.Progressbar(self.CpuWidgetFrame,
                                             style="Bluec.Horizontal.TProgressbar",
                                             orient="horizontal",
                                             length=170,
@@ -311,28 +288,22 @@ class MainApplication(tk.Tk):
                                             maximum=100)
         self.cpu_load_bar.place(x=6, y=14, width=200, height=12)
         # label cpu description
-        self.cpu_load_text = Label(self.cpu_widget_frame, text=" CPU",
-                                   bg='#06141b', fg='#4a5c6a', font=('Arial', 9, 'bold'),
-                                   justify='center')
-        self.cpu_load_text.place(x=215, y=0, width=40, height=40)
-        # label cpu load current #06141b
-        self.cpu_load_percent = Label(self.cpu_widget_frame, text="100",
-                                      bg='#06141b', fg='#ccd0cf', font=('Arial', 10, 'bold'),
-                                      justify='center')
+        self.cpu_load_text = Label(self.CpuWidgetFrame, bg='#06141b', fg='#afafaf', font=('Jura', 10, 'bold'),
+                                   text=" CPU", justify='center')
+        self.cpu_load_text.place(x=218, y=0, width=40, height=40)
+        # label cpu load current
+        self.cpu_load_percent = Label(self.CpuWidgetFrame, bg='#06141b', fg='#ccd0cf', font=('Arial', 10, 'bold'),
+                                      text="100", justify='center', anchor='e')
         self.cpu_load_percent.place(x=255, y=0, width=40, height=40)
         self.setup_cpu_update()
         ################################################################################################################
-        self.gpu_widget_frame = Frame(self.widget_widget_frame, bd=0, width=300, height=120, bg="#06141b")
-        self.gpu_widget_frame.place(x=0, y=140, width=300, height=120)
-        # label gpu widget
+        # Frame gpu widget
+        self.GpuWidgetFrame = Frame(self.WidgetWidgetFrame, bd=0, width=300, height=120, bg="#06141b")
+        self.GpuWidgetFrame.place(x=0, y=140, width=300, height=120)
+        # label gpu widget bg
         self.gpu_widget_png = ImageTk.PhotoImage(Image.open("Rubikon_VX2/setup_gpu_bg_v2.png"))
-        self.gpu_widget_label = Label(self.gpu_widget_frame, image=self.gpu_widget_png)
-        self.gpu_widget_label.place(x=0, y=0, width=300, height=120)
-        # label gpu name
-        #self.gpu_name_label = Label(self.gpu_widget_frame, text="",
-                                    #bg='#06141b', fg='#4a5c6a', font=('Arial', 9, 'bold'),
-                                    #anchor=W)
-        #self.gpu_name_label.place(x=5, y=3, width=295, height=40)
+        self.gpu_widget_bg = Label(self.GpuWidgetFrame, image=self.gpu_widget_png)
+        self.gpu_widget_bg.place(x=0, y=0, width=300, height=120)
         # gpu load progressbar
         style_blue = ttk.Style()
         style_blue.theme_use('alt')
@@ -349,7 +320,7 @@ class MainApplication(tk.Tk):
                               troughrelief='flat')
         ttk.Style().map('Bluec.Horizontal.TProgressbar')
 
-        self.gpu_load_bar = ttk.Progressbar(self.gpu_widget_frame,
+        self.gpu_load_bar = ttk.Progressbar(self.GpuWidgetFrame,
                                             style="Bluec.Horizontal.TProgressbar",
                                             orient="horizontal",
                                             length=170,
@@ -357,14 +328,12 @@ class MainApplication(tk.Tk):
                                             maximum=100)
         self.gpu_load_bar.place(x=6, y=14, width=200, height=12)
         # label gpu description
-        self.gpu_load_text = Label(self.gpu_widget_frame, text=" GPU",
-                                   bg='#06141b', fg='#4a5c6a', font=('Arial', 9, 'bold'),
-                                   justify='center')
-        self.gpu_load_text.place(x=215, y=0, width=40, height=40)
+        self.gpu_load_text = Label(self.GpuWidgetFrame, bg='#06141b', fg='#afafaf', font=('Jura', 10, 'bold'),
+                                   text=" GPU", justify='center')
+        self.gpu_load_text.place(x=218, y=0, width=40, height=40)
         # label cpu load current
-        self.gpu_load_percent = Label(self.gpu_widget_frame, text="100",
-                                      bg='#06141b', fg='#ccd0cf', font=('Arial', 10, 'bold'),
-                                      justify='center')
+        self.gpu_load_percent = Label(self.GpuWidgetFrame, bg='#06141b', fg='#ccd0cf', font=('Arial', 10, 'bold'),
+                                      text="100", justify='center', anchor='e')
         self.gpu_load_percent.place(x=255, y=0, width=40, height=40)
         # gpu load progressbar
         style_blue = ttk.Style()
@@ -382,24 +351,22 @@ class MainApplication(tk.Tk):
                               troughrelief='flat')
         ttk.Style().map('Bluec.Horizontal.TProgressbar')
 
-        self.mem_load_bar = ttk.Progressbar(self.gpu_widget_frame,
+        self.mem_load_bar = ttk.Progressbar(self.GpuWidgetFrame,
                                             style="Bluec.Horizontal.TProgressbar",
                                             orient="horizontal",
                                             length=170,
                                             mode="determinate",
                                             maximum=100)
         self.mem_load_bar.place(x=6, y=54, width=200, height=12)
-        # label cpu load minimal
-        self.mem_load_text = Label(self.gpu_widget_frame, text=" MEM",
-                                   bg='#06141b', fg='#4a5c6a', font=('Arial', 9, 'bold'),
-                                   justify='center')
-        self.mem_load_text.place(x=215, y=40, width=40, height=40)
-        # label cpu load current
-        self.mem_load_percent = Label(self.gpu_widget_frame, text="100",
-                                      bg='#06141b', fg='#ccd0cf', font=('Arial', 10, 'bold'),
-                                      justify='center')
+        # label mem load minimal
+        self.mem_load_text = Label(self.GpuWidgetFrame, bg='#06141b', fg='#afafaf', font=('Jura', 10, 'bold'),
+                                   text=" MEM", justify='center')
+        self.mem_load_text.place(x=218, y=40, width=40, height=40)
+        # label mem load current
+        self.mem_load_percent = Label(self.GpuWidgetFrame, bg='#06141b', fg='#ccd0cf', font=('Arial', 10, 'bold'),
+                                      text="100", justify='center', anchor='e')
         self.mem_load_percent.place(x=255, y=40, width=40, height=40)
-        # gpu load progressbar
+        # mem load progressbar
         style_blue = ttk.Style()
         style_blue.theme_use('alt')
         ttk.Style().configure("Red.Horizontal.TProgressbar",
@@ -415,37 +382,30 @@ class MainApplication(tk.Tk):
                               troughrelief='flat')
         ttk.Style().map('Red.Horizontal.TProgressbar')
 
-        self.tem_load_bar = ttk.Progressbar(self.gpu_widget_frame,
+        self.tem_load_bar = ttk.Progressbar(self.GpuWidgetFrame,
                                             style="Red.Horizontal.TProgressbar",
                                             orient="horizontal",
                                             length=170,
                                             mode="determinate",
                                             maximum=100)
         self.tem_load_bar.place(x=6, y=94, width=200, height=12)
-        self.tem_load_text = Label(self.gpu_widget_frame, text=" TEM",
-                                   bg='#06141b', fg='#4a5c6a', font=('Arial', 9, 'bold'),
-                                   justify='center')
-        self.tem_load_text.place(x=215, y=80, width=40, height=40)
-
+        self.tem_load_text = Label(self.GpuWidgetFrame, bg='#06141b', fg='#afafaf', font=('Jura', 10, 'bold'),
+                                   text=" TEM", justify='center')
+        self.tem_load_text.place(x=218, y=80, width=40, height=40)
         # label cpu load current
-        self.tem_load_percent = Label(self.gpu_widget_frame, text="100",
-                                      bg='#06141b', fg='#ccd0cf', font=('Arial', 10, 'bold'),
-                                      justify='center')
+        self.tem_load_percent = Label(self.GpuWidgetFrame, bg='#06141b', fg='#ccd0cf', font=('Arial', 10, 'bold'),
+                                      text="100", justify='center', anchor='e')
         self.tem_load_percent.place(x=255, y=80, width=40, height=40)
         self.setup_gpu_update()
         ################################################################################################################
-        self.ram_widget_frame = Frame(self.widget_widget_frame, bd=0, width=300, height=40, bg="#06141b")
-        self.ram_widget_frame.place(x=0, y=270, width=300, height=40)
-        # label gpu widget
+        # Frane Ram Widget
+        self.RamWidgetFrame = Frame(self.WidgetWidgetFrame, bd=0, width=300, height=40, bg="#06141b")
+        self.RamWidgetFrame.place(x=0, y=270, width=300, height=40)
+        # label Ram widget bg
         self.ram_widget_png = ImageTk.PhotoImage(Image.open("Rubikon_VX2/tool_bg.png"))
-        self.ram_widget_label = Label(self.ram_widget_frame, image=self.ram_widget_png)
-        self.ram_widget_label.place(x=0, y=0, width=300, height=40)
-        # label mem name
-        #self.ram_name_label = Label(self.ram_widget_frame, text="Virtual Memory",
-                                    #bg='#06141b', fg='#4a5c6a', font=('Arial', 9, 'bold'),
-                                    #anchor=W)
-        #self.ram_name_label.place(x=5, y=3, width=295, height=40)
-        # mem load progressbar
+        self.ram_widget_bg = Label(self.RamWidgetFrame, image=self.ram_widget_png)
+        self.ram_widget_bg.place(x=0, y=0, width=300, height=40)
+        # Ram load progressbar
         style_blue = ttk.Style()
         style_blue.theme_use('alt')
         ttk.Style().configure("Bluec.Horizontal.TProgressbar",
@@ -461,25 +421,105 @@ class MainApplication(tk.Tk):
                               troughrelief='flat')
         ttk.Style().map('Bluec.Horizontal.TProgressbar')
 
-        self.ram_load_bar = ttk.Progressbar(self.ram_widget_frame,
+        self.ram_load_bar = ttk.Progressbar(self.RamWidgetFrame,
                                             style="Bluec.Horizontal.TProgressbar",
                                             orient="horizontal",
                                             length=170,
                                             mode="determinate",
                                             maximum=100)
         self.ram_load_bar.place(x=6, y=14, width=200, height=12)
-        self.ram_load_text = Label(self.ram_widget_frame, text=" RAM",
-                                   bg='#06141b', fg='#4a5c6a', font=('Arial', 9, 'bold'),
-                                   justify='center')
-        self.ram_load_text.place(x=215, y=0, width=40, height=40)
-
-        # label mem load current
-        self.ram_load_percent = Label(self.ram_widget_frame, text="100",
-                                      bg='#06141b', fg='#ccd0cf', font=('Arial', 10, 'bold'),
-                                      justify='center')
+        self.ram_load_text = Label(self.RamWidgetFrame, bg='#06141b', fg='#afafaf', font=('Jura', 10, 'bold'),
+                                   text=" RAM", justify='center')
+        self.ram_load_text.place(x=218, y=0, width=40, height=40)
+        # label Ram load percent
+        self.ram_load_percent = Label(self.RamWidgetFrame, bg='#06141b', fg='#ccd0cf', font=('Arial', 10, 'bold'),
+                                      text="100", justify='center', anchor='e')
         self.ram_load_percent.place(x=255, y=0, width=40, height=40)
         self.setup_ram_update()
         ################################################################################################################
+        # Frame for chat widget
+        self.ChatWidgetFrame = Frame(self.master, bd=0, bg="#06141b")
+        self.ChatWidgetFrame.place(x=10, y=725, width=300, height=305)
+        # Label for chat widget
+        self.ChatWidgetPng = ImageTk.PhotoImage(Image.open("Rubikon_VX2/chat_bg.png"))
+        self.ChatWidgetBg = Label(self.ChatWidgetFrame, image=self.ChatWidgetPng)
+        self.ChatWidgetBg.place(x=0, y=0, width=300, height=305)
+
+        # Frame for réponse widget
+        self.ReponseWidgetFrame = tk.Frame(self.ChatWidgetFrame, bd=0, bg="#06141b")
+        self.ReponseWidgetFrame.place(x=5, y=10, width=290, height=250)
+        # Label for text widget
+        self.ReponseWidgetLabel = tk.Text(
+            self.ReponseWidgetFrame,
+            bd=0,
+            wrap="word",
+            bg="black",
+            fg="white",
+            font=("Consolas", 10),
+            padx=10,
+            pady=10)
+        self.ReponseWidgetLabel.place(x=0, y=0, width=290, height=250)
+
+        # Lier la molette au défilement vertical
+        def defiler_texte(event):
+            self.ReponseWidgetLabel.yview_scroll(-1 * (event.delta // 120), "units")
+
+        self.ReponseWidgetLabel.bind("<MouseWheel>", defiler_texte)
+        # Frame for question widget
+        self.QuestionWidgetFrame = tk.Frame(self.ChatWidgetFrame, bd=0, bg="#06141b")
+        self.QuestionWidgetFrame.place(x=5, y=265, width=240, height=35)
+
+        # Label for question widget
+        self.QuestionWidgetLabel = tk.Text(self.QuestionWidgetFrame,
+                                           pady=8,
+                                           padx=5,
+                                           font=('Consolas ', 10, 'bold'),
+                                           height=10, wrap="word", bg="#0b2532", fg="#afafaf", bd=0,)
+        self.QuestionWidgetLabel.bind("<Return>", self.envoyer_question)
+        self.QuestionWidgetLabel.place(x=0, y=0, width=240, height=35)
+        # Frame for Send widget
+        self.SendWidgetFrame = tk.Frame(self.ChatWidgetFrame, bd=0, bg="#06141b")
+        self.SendWidgetFrame.place(x=250, y=265, width=45, height=35)
+
+        # Label for send button
+        self.SendButtonLabel = Label(self.ChatWidgetFrame, bd=0, highlightthickness=0)
+        self.SendButtonLabel = LabelButton(master=self, label=self.SendButtonLabel, button_name="send",
+                                           x=250, y=263, width=40, height=40)
+
+        ################################################################################################################
+
+    def envoyer_question(self, event=None):
+        question = self.QuestionWidgetLabel.get("1.0", tk.END).strip()
+        if not question:
+            return "break"
+
+        print(f"Question envoyée : {question}")
+        self.ReponseWidgetLabel.insert(tk.END, f"User: {question}\n\n")
+        self.ReponseWidgetLabel.see(tk.END)
+        self.QuestionWidgetLabel.delete("1.0", tk.END)
+
+        def fetch_response():
+            try:
+                stream = ollama.chat(
+                    model='llama3.2',
+                    messages=[{'role': 'user', 'content': question}],
+                    stream=True
+                )
+                first_chunk = True
+                for chunk in stream:
+                    if first_chunk:
+                        self.ReponseWidgetLabel.insert(tk.END, "Ollama: ")
+                        first_chunk = False
+                    self.ReponseWidgetLabel.insert(tk.END, chunk['message']['content'])
+                    self.ReponseWidgetLabel.see(tk.END)
+                # Saut de ligne final après la réponse
+                self.ReponseWidgetLabel.insert(tk.END, "\n\n")
+            except Exception as e:
+                self.ReponseWidgetLabel.insert(tk.END, f"\n[Erreur] Impossible d'envoyer la question : {e}\n")
+                self.ReponseWidgetLabel.see(tk.END)
+
+        threading.Thread(target=fetch_response, daemon=True).start()
+        return "break"
 
     # Function that returns the position of the pressed click to "move_window"
     def get_pos(self, event):
@@ -504,7 +544,7 @@ class MainApplication(tk.Tk):
     # Function to reduce the application to an icon in the taskbar
     # Also activates a listener which returns the position of the left click to the "on_click" function
     def on_minimize(self, *args):
-        self.mini_button.change_state("unclic")
+        self.MiniButton.change_state("unclic")
         self.win_open = False
         image = Image.open("Rubikon_VX2/icon_rubikon_32.ico")
         menu = (Item('Open', lambda: self.on_open()),
@@ -538,11 +578,12 @@ class MainApplication(tk.Tk):
 
     # Function that serves to reduce the application to the side or re-enlarge it
     def logo_unclic(self, *args):
-        self.logo_button.change_state("unclic")
+
+        self.LogoButton.change_state("unclic")
 
         if self.win_hide is False:
             self.win_hide = True
-            self.after(100, self.regress_video)
+            self.after(100, self.regress_chat)
 
         elif self.win_hide:
             self.win_hide = False
@@ -555,7 +596,7 @@ class MainApplication(tk.Tk):
 
         if current_winfox >= -225:
             current_winfox -= 5
-            self.geometry(f"320x1000+{current_winfox}+10")
+            self.geometry(f"320x1035+{current_winfox}+10")
             self.after(2, self.regress_logo)
 
         elif self.winfo_x() >= -225:
@@ -568,69 +609,111 @@ class MainApplication(tk.Tk):
 
         if current_winfox <= -10:
             current_winfox += 5
-            self.geometry(f"320x1000+{current_winfox}+10")
+            self.geometry(f"320x1035+{current_winfox}+10")
             self.after(2, self.expand_logo)
 
         elif self.winfo_x() >= -10:
             self.after(10, self.expand_video)
 
+    # Function to expand the video widget
     def expand_video(self):
 
-        current_height_video = int(self.medi_widget_frame.winfo_height())
+        current_height_video = int(self.MediWidgetFrame.winfo_height())
 
-        a = int(self.medi_widget_frame.winfo_y())
-        b = int(self.medi_widget_frame.winfo_height())
+        a = int(self.MediWidgetFrame.winfo_y())
+        b = int(self.MediWidgetFrame.winfo_height())
 
         c = 10
 
-        self.widget_widget_frame.place_configure(y=(a + b) + c)
+        self.WidgetWidgetFrame.place_configure(y=(a + b) + c)
 
         if current_height_video <= 210:
             current_height_video += 5
-            self.medi_widget_frame.place_configure(height=current_height_video)
+            self.MediWidgetFrame.place_configure(height=current_height_video)
             self.after(5, self.expand_video)
 
-    # Function to reduce the download widget
+        elif current_height_video >= 215:
+            self.after(5, self.expand_chat)
+
+    # Function to reduce the video widget
     def regress_video(self):
 
-        current_height_video = int(self.medi_widget_frame.winfo_height())
+        current_height_video = int(self.MediWidgetFrame.winfo_height())
 
-        a = int(self.medi_widget_frame.winfo_y())
-        b = int(self.medi_widget_frame.winfo_height())
+        a = int(self.MediWidgetFrame.winfo_y())
+        b = int(self.MediWidgetFrame.winfo_height())
 
         c = 0
 
-        self.widget_widget_frame.place_configure(y=(a + b) + c)
+        self.WidgetWidgetFrame.place_configure(y=(a + b) + c)
 
         if current_height_video >= 10:
 
             current_height_video -= 5
-            self.medi_widget_frame.place_configure(height=current_height_video)
+            self.MediWidgetFrame.place_configure(height=current_height_video)
 
             self.after(5, self.regress_video)
 
-        elif self.medi_widget_frame.winfo_height() >= 5:
+        elif self.MediWidgetFrame.winfo_height() >= 5:
 
             self.after(5, self.regress_logo)
+
+    # Function to expand the chat widget
+    def expand_chat(self):
+
+        current_height_chat = int(self.ChatWidgetFrame.winfo_height())
+
+        a = int(self.ChatWidgetFrame.winfo_y())
+        b = int(self.ChatWidgetFrame.winfo_height())
+
+        c = 10
+
+        if current_height_chat <= 300:
+            current_height_chat += 5
+            self.ChatWidgetFrame.place_configure(height=current_height_chat)
+            self.after(5, self.expand_chat)
+
+    # Function to reduce the chat widget
+    def regress_chat(self):
+
+        current_height_chat = int(self.ChatWidgetFrame.winfo_height())
+
+        a = int(self.ChatWidgetFrame.winfo_y())
+        b = int(self.ChatWidgetFrame.winfo_height())
+
+        c = 0
+
+        if current_height_chat >= 10:
+
+            current_height_chat -= 5
+            self.ChatWidgetFrame.place_configure(height=current_height_chat)
+
+            self.after(5, self.regress_chat)
+
+        elif self.ChatWidgetFrame.winfo_height() >= 5:
+
+            self.after(5, self.regress_video)
 
     # Function to update the time, day and mount
     def time_date_update(self):
 
         now = datetime.datetime.now()
+
         current_time = now.strftime("%H:%M")
-        self.time_widget_label.config(text=current_time)
+        self.TimeWidgetLabel.config(text=current_time)
 
         current_day = now.strftime("%d")
-        self.date_day_label.config(text=current_day)
+        self.DateDayLabel.config(text=current_day)
 
         current_mount = now.strftime("%b")
-        self.date_mon_label.config(text=current_mount[:4])
+        self.DateMonLabel.config(text=current_mount[:4])
+
         self.after(2000, self.time_date_update)
 
     # Function to update the icon weather, temperature in Celsius and description of weather
     def weather_update(self):
 
-        api_key = 'YourOpenWeatherMapKey'
+        api_key = 'c51b77924149bad4a69badb05ecc681c'
         city = "Geneva"
         country_code = "CH"
 
@@ -650,21 +733,21 @@ class MainApplication(tk.Tk):
 
                 image = image.resize((70, 70))
                 self.icon_image = ImageTk.PhotoImage(image)
-                self.weat_icon_label.config(image=self.icon_image)
+                self.WeatherIconLabel.config(image=self.icon_image)
 
                 self.temperature = data['main']['temp']
                 self.temperature_int = int(self.temperature)
                 self.temperature_celsius = self.temperature - 273.15
-                self.weat_temp_label.config(text=f"{self.temperature_celsius:.0f}°C")
+                self.WeatherTempLabel.config(text=f"{self.temperature_celsius:.0f}°C")
 
                 self.weather_description = data['weather'][0]['description']
                 description_words = self.weather_description.split()
                 if len(description_words) >= 2:
                     first_word = description_words[0]
                     second_word = description_words[1]
-                    self.weat_desc_label.config(text=f"{first_word}\n{second_word}")
+                    self.WeatherDescLabel.config(text=f"{first_word}\n{second_word}")
                 else:
-                    self.weat_desc_label.config(text=self.weather_description)
+                    self.WeatherDescLabel.config(text=self.weather_description)
 
             else:
                 print("Erreur lors de la récupération des données de météo.")
@@ -707,14 +790,27 @@ class MainApplication(tk.Tk):
             if value == vlc.State.Playing:
                 current_time = self.player.get_time() // 1000
                 formatted_time = time.strftime("%M:%S", time.gmtime(current_time))
-                self.vide_title_label.config(text=self.title_song)
-                self.vide_time_label.config(text=formatted_time)
+                self.VideTitleLabel.config(text=self.title_song)
+                self.VideTimeLabel.config(text=formatted_time)
                 threading.Timer(0.5, self.update_time_label).start()
 
             elif value == vlc.State.Ended:
                 self.load_random_music()
             else:
                 pass
+
+    # Function that mute/unmute volume of media player
+    def volume_mute(self):
+
+        if self.audio_mute is False:
+            self.audio_mute = True
+            self.player.audio_set_mute(True)
+            self.update_button_volume()
+
+        elif self.audio_mute:
+            self.audio_mute = False
+            self.player.audio_set_mute(False)
+            self.update_button_volume()
 
     # Function to update the volume of the media player
     def volume_update(self, *args):
@@ -770,9 +866,9 @@ class MainApplication(tk.Tk):
                 self.duration = media.get_duration() // 1000
                 self.player.set_media(media)
 
-                self.vide_frame.pack_forget()
-                self.vide_frame.pack(padx=0, pady=5)
-                self.player.set_hwnd(self.vide_frame.winfo_id())
+                self.VideFrame.pack_forget()
+                self.VideFrame.pack(padx=0, pady=5)
+                self.player.set_hwnd(self.VideFrame.winfo_id())
 
                 self.player.play()
 
@@ -786,9 +882,9 @@ class MainApplication(tk.Tk):
                 self.duration = media.get_duration() // 1000
                 self.player.set_media(media)
 
-                self.vide_frame.pack_forget()
-                self.vide_frame.pack(padx=0, pady=5)
-                self.player.set_hwnd(self.vide_frame.winfo_id())
+                self.VideFrame.pack_forget()
+                self.VideFrame.pack(padx=0, pady=5)
+                self.player.set_hwnd(self.VideFrame.winfo_id())
 
                 self.player.play()
 
@@ -802,9 +898,9 @@ class MainApplication(tk.Tk):
             self.duration = media.get_duration() // 1000
             self.player.set_media(media)
 
-            self.vide_frame.pack_forget()
-            self.vide_frame.pack(padx=0, pady=5)
-            self.player.set_hwnd(self.vide_frame.winfo_id())
+            self.VideFrame.pack_forget()
+            self.VideFrame.pack(padx=0, pady=5)
+            self.player.set_hwnd(self.VideFrame.winfo_id())
 
             self.player.play()
 
@@ -839,16 +935,16 @@ class MainApplication(tk.Tk):
         self.update_button()
         self.audio_choose = None
         self.audio_random = None
-        self.vide_title_label.config(text="")
-        self.vide_time_label.config(text="")
-        self.vide_frame.pack_forget()
+        self.VideTitleLabel.config(text="")
+        self.VideTimeLabel.config(text="")
+        self.VideFrame.pack_forget()
 
         self.player.stop()
 
     # Function that updates the preview of the play/pause button
     def update_button(self):
 
-        self.paus_play_button_label = Label(self.play_widget_frame, bd=0, highlightthickness=0)
+        self.paus_play_button_label = Label(self.PlayWidgetFrame, bd=0, highlightthickness=0)
         if self.playing_music is None:
             pause_button_name = "play"
         elif self.playing_music is False:
@@ -858,6 +954,19 @@ class MainApplication(tk.Tk):
         self.pause_button = LabelButton(master=self, label=self.paus_play_button_label,
                                         x=85, y=40, width=40, height=40,
                                         button_name=pause_button_name)
+
+    # Function that updates the preview of the mute/unmute volume button
+    def update_button_volume(self):
+
+        self.volu_button_label = Label(self.PlayWidgetFrame, bd=0, highlightthickness=0)
+
+        if self.audio_mute is False:
+            volume_button_name = "volume"
+        else:
+            volume_button_name = "mute"
+        self.volu_button = LabelButton(master=self, label=self.volu_button_label,
+                                       x=220, y=0, width=40, height=40,
+                                       button_name=volume_button_name)
 
     # Function that serves to reduce the download widget or to resize it
     def music_unclic(self, *args):
@@ -1027,19 +1136,21 @@ class MainApplication(tk.Tk):
         except Exception as e:
             print("An error occurred:", e)
 
+    # Function to update Cpu information
     def setup_cpu_update(self):
 
         cpu_name = self.processors[0].Name
         clean_name = re.sub(r'[(R)TM@<>:"/\\|?*]', '', cpu_name)
-        #self.cpu_name_label.config(text=clean_name)
+        # self.cpu_name_label.config(text=clean_name)
 
         cpu_percent = psutil.cpu_percent(interval=1)
 
         self.cpu_load_percent.config(text=f"{cpu_percent:.0f}%")
         self.cpu_load_bar["value"] = cpu_percent
 
-        threading.Timer(0.5, self.setup_cpu_update).start()
+        threading.Timer(0.1, self.setup_cpu_update).start()
 
+    # Function to update Gpu information
     def setup_gpu_update(self):
 
         for i in range(0, deviceCount):
@@ -1047,7 +1158,7 @@ class MainApplication(tk.Tk):
 
             # gpu name
             name = py3nvml.nvidia_smi.nvmlDeviceGetName(handle)
-            #self.gpu_name_label.config(text=name)
+            # self.gpu_name_label.config(text=name)
             # gpu current load
             util = py3nvml.nvidia_smi.nvmlDeviceGetUtilizationRates(handle)
             gpu_util = util.gpu
@@ -1069,12 +1180,13 @@ class MainApplication(tk.Tk):
             tem = nvmlDeviceGetTemperature(handle, NVML_TEMPERATURE_GPU)
 
             # update tem label %
-            self.tem_load_percent.config(text=f"{tem:.0f}°")
+            self.tem_load_percent.config(text=f"{tem:.0f}° ")
             # update tem progressbar
             self.tem_load_bar["value"] = tem
 
-            threading.Timer(0.5, self.setup_gpu_update).start()
+            threading.Timer(0.1, self.setup_gpu_update).start()
 
+    # Function to update Ram information
     def setup_ram_update(self):
 
         ram_percent = psutil.virtual_memory().percent
@@ -1086,14 +1198,15 @@ class MainApplication(tk.Tk):
         total_ram = ram_0 + ram_1
         total_ram = int(total_ram)
         ram_giga = total_ram / (1024 ** 3)
-        #self.ram_name_label.config(text=f"Physical Memory (RAM): {ram_giga:.1f} GB")
+        # self.ram_name_label.config(text=f"Physical Memory (RAM): {ram_giga:.1f} GB")
 
         self.ram_load_percent.config(text=f"{ram_percent:.0f}%")
         self.ram_load_bar["value"] = ram_percent
 
-        threading.Timer(0.5, self.setup_ram_update).start()
+        threading.Timer(0.1, self.setup_ram_update).start()
 
 
 if __name__ == "__main__":
     app = MainApplication(None)
     app.mainloop()
+
